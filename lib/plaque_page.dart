@@ -23,6 +23,7 @@ class _PlaquePageState extends State<PlaquePage> {
         body: CustomCard(
       child: SizedBox(
           height: MediaQuery.of(context).size.height,
+          width: MediaQuery.of(context).size.width,
           child: Column(
             children: [
               const Text(
@@ -30,7 +31,15 @@ class _PlaquePageState extends State<PlaquePage> {
                 style: TextStyle(fontSize: 18, color: Colors.white),
               ),
               widget.plaqueList.isEmpty
-                  ? const Text('No Plaques found')
+                  ? Container(
+                      margin: EdgeInsets.only(top: 20),
+                      child: const Text(
+                        'No Plaques found',
+                        style: TextStyle(
+                          color: Colors.white,
+                        ),
+                      ),
+                    )
                   : Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [

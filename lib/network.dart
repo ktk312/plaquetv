@@ -6,7 +6,8 @@ class NetworkCalls {
 
     try {
       var url =
-          Uri.parse('https://bsdjudaica.com/plaq/postPlaque.php?id=$userID');
+          Uri.parse('https://bsdjudaica.com/plaq/tv/postPlaque.php?id=$userID');
+      print(url);
 
       http.Response res = await http.get(url);
 
@@ -25,8 +26,9 @@ class NetworkCalls {
     String returnString = '';
 
     try {
-      var url = Uri.parse('https://bsdjudaica.com/plaq/links.php?id=$userID');
-
+      var url =
+          Uri.parse('https://bsdjudaica.com/plaq/tv/links.php?id=$userID');
+      print(url);
       http.Response res = await http.get(url);
 
       if (res.statusCode >= 200 && res.statusCode < 300) {

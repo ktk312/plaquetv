@@ -185,7 +185,7 @@ class _HomePageState extends State<HomePage> {
         width: MediaQuery.sizeOf(context).width,
         height: MediaQuery.sizeOf(context).height,
         child: isLoading
-            ? CircularProgressIndicator()
+            ? Container(child: Center(child: CircularProgressIndicator()))
             : !isLoading && error != ''
                 ? Center(
                     child: Text(error),
