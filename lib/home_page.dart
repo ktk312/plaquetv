@@ -31,6 +31,8 @@ class _HomePageState extends State<HomePage> {
   String website2 = '';
   String website3 = '';
 
+  int count = 0;
+
   @override
   void initState() {
     // TODO: implement initState
@@ -48,7 +50,7 @@ class _HomePageState extends State<HomePage> {
       hasId = true;
       isLoading = true;
       setState(() {});
-      await getPlaques(id);
+      await getPlaquesLatest(id);
       await getWebsites(id);
       _startTimer(id);
       isLoading = false;
@@ -61,7 +63,7 @@ class _HomePageState extends State<HomePage> {
   void _startTimer(String id) {
     // Check every 10 minutes (600 seconds)
     _timer = Timer.periodic(Duration(minutes: 10), (timer) {
-      getPlaques(id);
+      getPlaquesLatest(id);
       getWebsites(id);
     });
   }
@@ -73,14 +75,55 @@ class _HomePageState extends State<HomePage> {
       error = response;
     } else {
       final decodedResponse = jsonDecode(response);
-      website1 = decodedResponse['link1'];
-      website2 = decodedResponse['link2'];
-      website3 = decodedResponse['link3'];
+      website1 = decodedResponse['link1'].toString();
+      website2 = decodedResponse['link2'].toString();
+      website3 = decodedResponse['link3'].toString();
+
       print(decodedResponse);
       isLoading = false;
       setState(() {});
     }
     isLoading = false;
+    setState(() {});
+  }
+
+  getPlaquesLatest(String id) async {
+    final response = await NetworkCalls().getPlaque(id);
+    print(response);
+
+    final resList = plaqueModelFromJson(response);
+    DateTime now = DateTime.now();
+    DateTime today = DateTime(now.year, now.month, now.day);
+
+    // Calculate the most recent Friday (including today if Friday)
+    int daysSinceFriday = (today.weekday - DateTime.friday + 7) % 7;
+    DateTime currentFriday = today.subtract(Duration(days: daysSinceFriday));
+
+    // If today is Friday and it's NOT the same as the currentFriday, move to today
+    if (today.weekday == DateTime.friday && today.isAfter(currentFriday)) {
+      currentFriday = today;
+    }
+
+    // Define the 9-day range: Friday to next Sunday (inclusive)
+    DateTime rangeStart = currentFriday;
+    DateTime rangeEnd =
+        rangeStart.add(Duration(days: 9)); // Exclusive of this date
+
+    List<PlaqueModel> nineDayPlaques = resList.where((plaque) {
+      DateTime dodDate = DateTime.parse(plaque.dod);
+      return !dodDate.isBefore(rangeStart) && dodDate.isBefore(rangeEnd);
+    }).toList();
+
+    plaqueList = nineDayPlaques;
+    maleList.clear();
+    femaleList.clear();
+    for (var element in nineDayPlaques) {
+      if (element.gender.toUpperCase() == "MALE") {
+        maleList.add(element);
+      } else {
+        femaleList.add(element);
+      }
+    }
     setState(() {});
   }
 
@@ -203,43 +246,49 @@ class _HomePageState extends State<HomePage> {
                             enableInfiniteScroll: true,
                             autoPlay: true),
                         items: [
-                          Container(
-                            width: MediaQuery.of(context).size.width,
-                            margin: const EdgeInsets.symmetric(horizontal: 5.0),
-                            child: InAppWebView(
-                              keepAlive: InAppWebViewKeepAlive(),
-                              onWebViewCreated: (controller) {
-                                print('created');
-                              },
-                              initialUrlRequest:
-                                  URLRequest(url: WebUri(website1)),
+                          if (website1 != 'null' && website1 != '')
+                            Container(
+                              width: MediaQuery.of(context).size.width,
+                              margin:
+                                  const EdgeInsets.symmetric(horizontal: 5.0),
+                              child: InAppWebView(
+                                keepAlive: InAppWebViewKeepAlive(),
+                                onWebViewCreated: (controller) {
+                                  print('created');
+                                },
+                                initialUrlRequest:
+                                    URLRequest(url: WebUri(website1)),
+                              ),
                             ),
-                          ),
-                          Container(
-                            width: MediaQuery.of(context).size.width,
-                            margin: const EdgeInsets.symmetric(horizontal: 5.0),
-                            child: InAppWebView(
-                              keepAlive: InAppWebViewKeepAlive(),
-                              onWebViewCreated: (controller) {},
-                              initialUrlRequest:
-                                  URLRequest(url: WebUri(website2)),
+                          if (website2 != 'null' && website2 != '')
+                            Container(
+                              width: MediaQuery.of(context).size.width,
+                              margin:
+                                  const EdgeInsets.symmetric(horizontal: 5.0),
+                              child: InAppWebView(
+                                keepAlive: InAppWebViewKeepAlive(),
+                                onWebViewCreated: (controller) {},
+                                initialUrlRequest:
+                                    URLRequest(url: WebUri(website2)),
+                              ),
                             ),
-                          ),
                           PlaquePage(
                             plaqueList: plaqueList,
                             hebrewDateFormatter: hebrewDateFormatter,
                           ),
-                          Container(
-                            width: MediaQuery.of(context).size.width,
-                            margin: const EdgeInsets.symmetric(horizontal: 5.0),
-                            child: InAppWebView(
-                              keepAlive: InAppWebViewKeepAlive(),
-                              onWebViewCreated: (controller) {},
-                              initialSettings: InAppWebViewSettings(),
-                              initialUrlRequest:
-                                  URLRequest(url: WebUri(website3)),
+                          if (website3 != 'null' && website3 != '')
+                            Container(
+                              width: MediaQuery.of(context).size.width,
+                              margin:
+                                  const EdgeInsets.symmetric(horizontal: 5.0),
+                              child: InAppWebView(
+                                keepAlive: InAppWebViewKeepAlive(),
+                                onWebViewCreated: (controller) {},
+                                initialSettings: InAppWebViewSettings(),
+                                initialUrlRequest:
+                                    URLRequest(url: WebUri(website3)),
+                              ),
                             ),
-                          ),
                         ],
                       ),
       ),
