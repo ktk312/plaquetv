@@ -56,29 +56,29 @@ class _HomePageState extends State<HomePage> {
     });
 
     await getPlaquesLatest(id);
-    await getWebsites(id);
+    // await getWebsites(id);
 
     setState(() => isLoading = false);
   }
 
-  Future<void> getWebsites(String id) async {
-    final response = await NetworkCalls().getWebsites(id);
-    final decoded = response.contains('Error:')
-        ? {}
-        : Map<String, dynamic>.from(jsonDecode(response));
-    webPages = [decoded['link1'], decoded['link2'], decoded['link3']]
-        .where(
-            (url) => url != null && url != 'null' && url.toString().isNotEmpty)
-        .map((url) => url.toString())
-        .toList();
-    timer = decoded['timer']?.toString() ?? '30';
+  // Future<void> getWebsites(String id) async {
+  //   final response = await NetworkCalls().getWebsites(id);
+  //   final decoded = response.contains('Error:')
+  //       ? {}
+  //       : Map<String, dynamic>.from(jsonDecode(response));
+  //   webPages = [decoded['link1'], decoded['link2'], decoded['link3']]
+  //       .where(
+  //           (url) => url != null && url != 'null' && url.toString().isNotEmpty)
+  //       .map((url) => url.toString())
+  //       .toList();
+  //   timer = decoded['timer']?.toString() ?? '30';
 
-    if (webPages.isNotEmpty) {
-      currentUrl = webPages[0];
-      currentIndex = 0;
-      startSlideTimer();
-    }
-  }
+  //   if (webPages.isNotEmpty) {
+  //     currentUrl = webPages[0];
+  //     currentIndex = 0;
+  //     startSlideTimer();
+  //   }
+  // }
   // void startDataRefreshTimer(String id) {
   //   _dataRefreshTimer?.cancel(); // Clear previous if any
   //   _dataRefreshTimer = Timer.periodic(Duration(minutes: 10), (_) async {
@@ -117,18 +117,24 @@ class _HomePageState extends State<HomePage> {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
+    // Step 1: Calculate range from last Friday to upcoming Sunday
     int daysSinceFriday = (today.weekday - DateTime.friday + 7) % 7;
     DateTime rangeStart = today.subtract(Duration(days: daysSinceFriday));
-    DateTime rangeEnd = rangeStart.add(Duration(days: 9));
+    DateTime rangeEnd =
+        rangeStart.add(Duration(days: 9)); // Friday → next Sunday
 
+    // Step 2: Build Hebrew date keys only for dates from TODAY onward
     Set<String> hebrewWeekKeys = {};
     for (int i = 0; i < 9; i++) {
       DateTime gregorianDay = rangeStart.add(Duration(days: i));
+      if (gregorianDay.isBefore(today)) continue; // Skip past days
+
       JewishDate hebrewDay = JewishDate.fromDateTime(gregorianDay);
       hebrewWeekKeys.add(
           "${hebrewDay.getJewishMonth()}-${hebrewDay.getJewishDayOfMonth()}");
     }
 
+    // Step 3: Filter plaques matching the Hebrew dates from today to end of range
     final nineDayPlaques = resList.where((plaque) {
       DateTime dodDate = DateTime.parse(plaque.predate);
       JewishDate dodHebrew = JewishDate.fromDateTime(dodDate);
@@ -206,21 +212,22 @@ class _HomePageState extends State<HomePage> {
                 ? Center(child: Text(error))
                 : !hasId
                     ? getCodeWidget()
-                    : IndexedStack(
-                        index: currentIndex,
-                        children: [
-                          InAppWebView(
-                            initialUrlRequest:
-                                URLRequest(url: WebUri(currentUrl)),
-                            onWebViewCreated: (controller) =>
-                                webViewController = controller,
-                          ),
-                          PlaquePage(
-                            plaqueList: plaqueList,
-                            hebrewDateFormatter: hebrewDateFormatter,
-                          ),
-                        ],
+                    :
+                    // : IndexedStack(
+                    //     index: currentIndex,
+                    //     children: [
+                    // InAppWebView(
+                    //   initialUrlRequest:
+                    //       URLRequest(url: WebUri(currentUrl)),
+                    //   onWebViewCreated: (controller) =>
+                    //       webViewController = controller,
+                    // ),
+                    PlaquePage(
+                        plaqueList: plaqueList,
+                        hebrewDateFormatter: hebrewDateFormatter,
                       ),
+        //   ],
+        // ),
       ),
     );
   }
