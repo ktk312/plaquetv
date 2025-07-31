@@ -30,6 +30,8 @@ class _HomePageState extends State<HomePage> {
   int currentUrlIndex = 0;
   Timer? _slideTimer;
   InAppWebViewController? webViewController;
+  bool isWebViewLoading = false;
+  bool switchToWebViewAfterLoad = false;
 
   List<PlaqueModel> plaqueList = [];
   List<PlaqueModel> maleList = [];
@@ -41,6 +43,7 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     initFunc();
+    startDataRefreshTimer();
   }
 
   Future<void> initFunc() async {
@@ -56,35 +59,39 @@ class _HomePageState extends State<HomePage> {
     });
 
     await getPlaquesLatest(id);
-    // await getWebsites(id);
+    await getWebsites(id);
 
     setState(() => isLoading = false);
   }
 
-  // Future<void> getWebsites(String id) async {
-  //   final response = await NetworkCalls().getWebsites(id);
-  //   final decoded = response.contains('Error:')
-  //       ? {}
-  //       : Map<String, dynamic>.from(jsonDecode(response));
-  //   webPages = [decoded['link1'], decoded['link2'], decoded['link3']]
-  //       .where(
-  //           (url) => url != null && url != 'null' && url.toString().isNotEmpty)
-  //       .map((url) => url.toString())
-  //       .toList();
-  //   timer = decoded['timer']?.toString() ?? '30';
+  Future<void> getWebsites(String id) async {
+    final response = await NetworkCalls().getWebsites(id);
+    final decoded = response.contains('Error:')
+        ? {}
+        : Map<String, dynamic>.from(jsonDecode(response));
+    webPages = [decoded['link1'], decoded['link2'], decoded['link3']]
+        .where(
+            (url) => url != null && url != 'null' && url.toString().isNotEmpty)
+        .map((url) => url.toString())
+        .toList();
+    timer = decoded['timer']?.toString() ?? '30';
 
-  //   if (webPages.isNotEmpty) {
-  //     currentUrl = webPages[0];
-  //     currentIndex = 0;
-  //     startSlideTimer();
-  //   }
-  // }
-  // void startDataRefreshTimer(String id) {
-  //   _dataRefreshTimer?.cancel(); // Clear previous if any
-  //   _dataRefreshTimer = Timer.periodic(Duration(minutes: 10), (_) async {
-  //     initFunc();
-  //   });
-  // }
+    if (webPages.isNotEmpty) {
+      currentUrl = webPages[0];
+      currentIndex = 0;
+      startSlideTimer();
+    }
+  }
+
+  void startDataRefreshTimer() {
+    print('data refresh timeer started ');
+    _dataRefreshTimer?.cancel(); // Clear previous if any
+    _dataRefreshTimer = Timer.periodic(Duration(minutes: 10), (_) async {
+      print('inside duration timer ');
+      await initFunc();
+      setState(() {});
+    });
+  }
 
   void startSlideTimer() {
     int interval = int.tryParse(timer) ?? 30;
@@ -102,10 +109,14 @@ class _HomePageState extends State<HomePage> {
                 urlRequest: URLRequest(url: WebUri(currentUrl)));
           }
         } else {
-          currentIndex = 0;
-          currentUrl = webPages[0];
+          isWebViewLoading = true;
+          switchToWebViewAfterLoad = true;
+          currentUrlIndex = 0;
+          currentUrl = webPages[currentUrlIndex];
+
           webViewController?.loadUrl(
-              urlRequest: URLRequest(url: WebUri(currentUrl)));
+            urlRequest: URLRequest(url: WebUri(currentUrl)),
+          );
         }
       });
     });
@@ -212,22 +223,34 @@ class _HomePageState extends State<HomePage> {
                 ? Center(child: Text(error))
                 : !hasId
                     ? getCodeWidget()
-                    :
-                    // : IndexedStack(
-                    //     index: currentIndex,
-                    //     children: [
-                    // InAppWebView(
-                    //   initialUrlRequest:
-                    //       URLRequest(url: WebUri(currentUrl)),
-                    //   onWebViewCreated: (controller) =>
-                    //       webViewController = controller,
-                    // ),
-                    PlaquePage(
-                        plaqueList: plaqueList,
-                        hebrewDateFormatter: hebrewDateFormatter,
+                    : IndexedStack(
+                        index: currentIndex,
+                        children: [
+                          isWebViewLoading && currentIndex == 0
+                              ? const SizedBox() // keep hidden while preloading
+                              : InAppWebView(
+                                  onLoadStop: (controller, url) {
+                                    setState(() {
+                                      isWebViewLoading = false;
+
+                                      if (switchToWebViewAfterLoad) {
+                                        currentIndex =
+                                            0; // Show WebView only after preload
+                                        switchToWebViewAfterLoad = false;
+                                      }
+                                    });
+                                  },
+                                  initialUrlRequest:
+                                      URLRequest(url: WebUri(currentUrl)),
+                                  onWebViewCreated: (controller) =>
+                                      webViewController = controller,
+                                ),
+                          PlaquePage(
+                            plaqueList: plaqueList,
+                            hebrewDateFormatter: hebrewDateFormatter,
+                          ),
+                        ],
                       ),
-        //   ],
-        // ),
       ),
     );
   }
