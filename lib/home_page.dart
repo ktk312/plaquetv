@@ -59,29 +59,29 @@ class _HomePageState extends State<HomePage> {
     });
 
     await getPlaquesLatest(id);
-    await getWebsites(id);
+    // await getWebsites(id);
 
     setState(() => isLoading = false);
   }
 
-  Future<void> getWebsites(String id) async {
-    final response = await NetworkCalls().getWebsites(id);
-    final decoded = response.contains('Error:')
-        ? {}
-        : Map<String, dynamic>.from(jsonDecode(response));
-    webPages = [decoded['link1'], decoded['link2'], decoded['link3']]
-        .where(
-            (url) => url != null && url != 'null' && url.toString().isNotEmpty)
-        .map((url) => url.toString())
-        .toList();
-    timer = decoded['timer']?.toString() ?? '30';
+  // Future<void> getWebsites(String id) async {
+  //   final response = await NetworkCalls().getWebsites(id);
+  //   final decoded = response.contains('Error:')
+  //       ? {}
+  //       : Map<String, dynamic>.from(jsonDecode(response));
+  //   webPages = [decoded['link1'], decoded['link2'], decoded['link3']]
+  //       .where(
+  //           (url) => url != null && url != 'null' && url.toString().isNotEmpty)
+  //       .map((url) => url.toString())
+  //       .toList();
+  //   timer = decoded['timer']?.toString() ?? '30';
 
-    if (webPages.isNotEmpty) {
-      currentUrl = webPages[0];
-      currentIndex = 0;
-      startSlideTimer();
-    }
-  }
+  //   if (webPages.isNotEmpty) {
+  //     currentUrl = webPages[0];
+  //     currentIndex = 0;
+  //     startSlideTimer();
+  //   }
+  // }
 
   void startDataRefreshTimer() {
     print('data refresh timeer started ');
@@ -93,34 +93,34 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  void startSlideTimer() {
-    int interval = int.tryParse(timer) ?? 30;
-    _slideTimer?.cancel();
-    _slideTimer = Timer.periodic(Duration(seconds: interval), (_) {
-      setState(() {
-        if (currentIndex == 0) {
-          currentUrlIndex++;
-          if (currentUrlIndex >= webPages.length) {
-            currentIndex = 1;
-            currentUrlIndex = 0;
-          } else {
-            currentUrl = webPages[currentUrlIndex];
-            webViewController?.loadUrl(
-                urlRequest: URLRequest(url: WebUri(currentUrl)));
-          }
-        } else {
-          isWebViewLoading = true;
-          switchToWebViewAfterLoad = true;
-          currentUrlIndex = 0;
-          currentUrl = webPages[currentUrlIndex];
+  // void startSlideTimer() {
+  //   int interval = int.tryParse(timer) ?? 30;
+  //   _slideTimer?.cancel();
+  //   _slideTimer = Timer.periodic(Duration(seconds: interval), (_) {
+  //     setState(() {
+  //       if (currentIndex == 0) {
+  //         currentUrlIndex++;
+  //         if (currentUrlIndex >= webPages.length) {
+  //           currentIndex = 1;
+  //           currentUrlIndex = 0;
+  //         } else {
+  //           currentUrl = webPages[currentUrlIndex];
+  //           webViewController?.loadUrl(
+  //               urlRequest: URLRequest(url: WebUri(currentUrl)));
+  //         }
+  //       } else {
+  //         isWebViewLoading = true;
+  //         switchToWebViewAfterLoad = true;
+  //         currentUrlIndex = 0;
+  //         currentUrl = webPages[currentUrlIndex];
 
-          webViewController?.loadUrl(
-            urlRequest: URLRequest(url: WebUri(currentUrl)),
-          );
-        }
-      });
-    });
-  }
+  //         webViewController?.loadUrl(
+  //           urlRequest: URLRequest(url: WebUri(currentUrl)),
+  //         );
+  //       }
+  //     });
+  //   });
+  // }
 
   Future<void> getPlaquesLatest(String id) async {
     final response = await NetworkCalls().getPlaque(id);
@@ -128,13 +128,25 @@ class _HomePageState extends State<HomePage> {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
-    // Step 1: Calculate range from last Friday to upcoming Sunday
+    // Step 1: Calculate range start (from last Friday by default)
     int daysSinceFriday = (today.weekday - DateTime.friday + 7) % 7;
     DateTime rangeStart = today.subtract(Duration(days: daysSinceFriday));
-    DateTime rangeEnd =
-        rangeStart.add(Duration(days: 9)); // Friday → next Sunday
 
-    // Step 2: Build Hebrew date keys only for dates from TODAY onward
+    // 🕒 Special handling for Friday 2 PM cutoff
+    if (today.weekday == DateTime.friday) {
+      if (now.hour < 14) {
+        // Before 2 PM → use LAST Friday as start
+        rangeStart = rangeStart.subtract(const Duration(days: 7));
+      } else {
+        // After 2 PM → use NEXT Friday as start
+        rangeStart = rangeStart.add(const Duration(days: 7));
+      }
+    }
+
+    // Range end → next Sunday (total 9 days)
+    DateTime rangeEnd = rangeStart.add(const Duration(days: 9));
+
+    // Step 2: Build Hebrew date keys only from TODAY onward
     Set<String> hebrewWeekKeys = {};
     for (int i = 0; i < 9; i++) {
       DateTime gregorianDay = rangeStart.add(Duration(days: i));
@@ -145,7 +157,11 @@ class _HomePageState extends State<HomePage> {
           "${hebrewDay.getJewishMonth()}-${hebrewDay.getJewishDayOfMonth()}");
     }
 
-    // Step 3: Filter plaques matching the Hebrew dates from today to end of range
+    // Step 3: Current-year plaques
+    final currentYearPlaques =
+        resList.where((plaque) => plaque.currentyear == true).toList();
+
+    // Step 4: Filter plaques matching the Hebrew dates in the current 9-day window
     final nineDayPlaques = resList.where((plaque) {
       DateTime dodDate = DateTime.parse(plaque.predate);
       JewishDate dodHebrew = JewishDate.fromDateTime(dodDate);
@@ -154,7 +170,8 @@ class _HomePageState extends State<HomePage> {
       return hebrewWeekKeys.contains(key);
     }).toList();
 
-    plaqueList = nineDayPlaques;
+    // Step 5: Combine and categorize
+    plaqueList = [...nineDayPlaques, ...currentYearPlaques];
     maleList =
         nineDayPlaques.where((e) => e.gender.toUpperCase() == 'MALE').toList();
     femaleList =
@@ -223,34 +240,35 @@ class _HomePageState extends State<HomePage> {
                 ? Center(child: Text(error))
                 : !hasId
                     ? getCodeWidget()
-                    : IndexedStack(
-                        index: currentIndex,
-                        children: [
-                          isWebViewLoading && currentIndex == 0
-                              ? const SizedBox() // keep hidden while preloading
-                              : InAppWebView(
-                                  onLoadStop: (controller, url) {
-                                    setState(() {
-                                      isWebViewLoading = false;
+                    :
+                    // IndexedStack(
+                    //     index: currentIndex,
+                    //     children: [
+                    // isWebViewLoading && currentIndex == 0
+                    //     ? const SizedBox() // keep hidden while preloading
+                    //     : InAppWebView(
+                    //         onLoadStop: (controller, url) {
+                    //           setState(() {
+                    //             isWebViewLoading = false;
 
-                                      if (switchToWebViewAfterLoad) {
-                                        currentIndex =
-                                            0; // Show WebView only after preload
-                                        switchToWebViewAfterLoad = false;
-                                      }
-                                    });
-                                  },
-                                  initialUrlRequest:
-                                      URLRequest(url: WebUri(currentUrl)),
-                                  onWebViewCreated: (controller) =>
-                                      webViewController = controller,
-                                ),
-                          PlaquePage(
-                            plaqueList: plaqueList,
-                            hebrewDateFormatter: hebrewDateFormatter,
-                          ),
-                        ],
+                    //             if (switchToWebViewAfterLoad) {
+                    //               currentIndex =
+                    //                   0; // Show WebView only after preload
+                    //               switchToWebViewAfterLoad = false;
+                    //             }
+                    //           });
+                    //         },
+                    //         initialUrlRequest:
+                    //             URLRequest(url: WebUri(currentUrl)),
+                    //         onWebViewCreated: (controller) =>
+                    //             webViewController = controller,
+                    //       ),
+                    PlaquePage(
+                        plaqueList: plaqueList,
+                        hebrewDateFormatter: hebrewDateFormatter,
                       ),
+        //   ],
+        // ),
       ),
     );
   }
