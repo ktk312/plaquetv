@@ -132,17 +132,6 @@ class _HomePageState extends State<HomePage> {
     int daysSinceFriday = (today.weekday - DateTime.friday + 7) % 7;
     DateTime rangeStart = today.subtract(Duration(days: daysSinceFriday));
 
-    // 🕒 Special handling for Friday 2 PM cutoff
-    if (today.weekday == DateTime.friday) {
-      if (now.hour < 14) {
-        // Before 2 PM → use LAST Friday as start
-        rangeStart = rangeStart.subtract(const Duration(days: 7));
-      } else {
-        // After 2 PM → use NEXT Friday as start
-        rangeStart = rangeStart.add(const Duration(days: 7));
-      }
-    }
-
     // Range end → next Sunday (total 9 days)
     DateTime rangeEnd = rangeStart.add(const Duration(days: 9));
 
@@ -170,8 +159,21 @@ class _HomePageState extends State<HomePage> {
       return hebrewWeekKeys.contains(key);
     }).toList();
 
-    // Step 5: Combine and categorize
-    plaqueList = [...nineDayPlaques, ...currentYearPlaques];
+    // Step 5: Combine (no duplicates) and categorize
+    final addedIds = <String>{};
+    List<PlaqueModel> merged = [];
+
+    // Add nine-day plaques
+    for (var p in nineDayPlaques) {
+      if (addedIds.add(p.plaqueId)) merged.add(p);
+    }
+
+    // Add current-year plaques (only if not already added)
+    for (var p in currentYearPlaques) {
+      if (addedIds.add(p.plaqueId)) merged.add(p);
+    }
+
+    plaqueList = merged;
     maleList =
         nineDayPlaques.where((e) => e.gender.toUpperCase() == 'MALE').toList();
     femaleList =
@@ -241,7 +243,7 @@ class _HomePageState extends State<HomePage> {
                 : !hasId
                     ? getCodeWidget()
                     :
-                    // IndexedStack(
+                    //  IndexedStack(
                     //     index: currentIndex,
                     //     children: [
                     // isWebViewLoading && currentIndex == 0
@@ -267,7 +269,7 @@ class _HomePageState extends State<HomePage> {
                         plaqueList: plaqueList,
                         hebrewDateFormatter: hebrewDateFormatter,
                       ),
-        //   ],
+        // ],
         // ),
       ),
     );
