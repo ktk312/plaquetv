@@ -98,7 +98,8 @@ class _PlaquePageState extends State<PlaquePage> {
                                                     .format(
                                                         JewishDate.fromDateTime(
                                                             DateTime.tryParse(
-                                                                plaque.dod)!)),
+                                                                plaque.dod)!),
+                                                        pattern: "dd MM"),
                                                 style: const TextStyle(
                                                   fontSize: 16.0,
                                                   color: Colors.white,
@@ -170,7 +171,8 @@ class _PlaquePageState extends State<PlaquePage> {
                                                     .format(
                                                         JewishDate.fromDateTime(
                                                             DateTime.tryParse(
-                                                                plaque.dod)!)),
+                                                                plaque.dod)!),
+                                                        pattern: "dd MM"),
                                                 style: const TextStyle(
                                                   fontSize: 16.0,
                                                   color: Colors.white,

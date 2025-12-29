@@ -59,29 +59,29 @@ class _HomePageState extends State<HomePage> {
     });
 
     await getPlaquesLatest(id);
-    // await getWebsites(id);
+    await getWebsites(id);
 
     setState(() => isLoading = false);
   }
 
-  // Future<void> getWebsites(String id) async {
-  //   final response = await NetworkCalls().getWebsites(id);
-  //   final decoded = response.contains('Error:')
-  //       ? {}
-  //       : Map<String, dynamic>.from(jsonDecode(response));
-  //   webPages = [decoded['link1'], decoded['link2'], decoded['link3']]
-  //       .where(
-  //           (url) => url != null && url != 'null' && url.toString().isNotEmpty)
-  //       .map((url) => url.toString())
-  //       .toList();
-  //   timer = decoded['timer']?.toString() ?? '30';
+  Future<void> getWebsites(String id) async {
+    final response = await NetworkCalls().getWebsites(id);
+    final decoded = response.contains('Error:')
+        ? {}
+        : Map<String, dynamic>.from(jsonDecode(response));
+    webPages = [decoded['link1'], decoded['link2'], decoded['link3']]
+        .where(
+            (url) => url != null && url != 'null' && url.toString().isNotEmpty)
+        .map((url) => url.toString())
+        .toList();
+    timer = decoded['timer']?.toString() ?? '30';
 
-  //   if (webPages.isNotEmpty) {
-  //     currentUrl = webPages[0];
-  //     currentIndex = 0;
-  //     startSlideTimer();
-  //   }
-  // }
+    if (webPages.isNotEmpty) {
+      currentUrl = webPages[0];
+      currentIndex = 0;
+      startSlideTimer();
+    }
+  }
 
   void startDataRefreshTimer() {
     print('data refresh timeer started ');
@@ -93,34 +93,34 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  // void startSlideTimer() {
-  //   int interval = int.tryParse(timer) ?? 30;
-  //   _slideTimer?.cancel();
-  //   _slideTimer = Timer.periodic(Duration(seconds: interval), (_) {
-  //     setState(() {
-  //       if (currentIndex == 0) {
-  //         currentUrlIndex++;
-  //         if (currentUrlIndex >= webPages.length) {
-  //           currentIndex = 1;
-  //           currentUrlIndex = 0;
-  //         } else {
-  //           currentUrl = webPages[currentUrlIndex];
-  //           webViewController?.loadUrl(
-  //               urlRequest: URLRequest(url: WebUri(currentUrl)));
-  //         }
-  //       } else {
-  //         isWebViewLoading = true;
-  //         switchToWebViewAfterLoad = true;
-  //         currentUrlIndex = 0;
-  //         currentUrl = webPages[currentUrlIndex];
+  void startSlideTimer() {
+    int interval = int.tryParse(timer) ?? 30;
+    _slideTimer?.cancel();
+    _slideTimer = Timer.periodic(Duration(seconds: interval), (_) {
+      setState(() {
+        if (currentIndex == 0) {
+          currentUrlIndex++;
+          if (currentUrlIndex >= webPages.length) {
+            currentIndex = 1;
+            currentUrlIndex = 0;
+          } else {
+            currentUrl = webPages[currentUrlIndex];
+            webViewController?.loadUrl(
+                urlRequest: URLRequest(url: WebUri(currentUrl)));
+          }
+        } else {
+          isWebViewLoading = true;
+          switchToWebViewAfterLoad = true;
+          currentUrlIndex = 0;
+          currentUrl = webPages[currentUrlIndex];
 
-  //         webViewController?.loadUrl(
-  //           urlRequest: URLRequest(url: WebUri(currentUrl)),
-  //         );
-  //       }
-  //     });
-  //   });
-  // }
+          webViewController?.loadUrl(
+            urlRequest: URLRequest(url: WebUri(currentUrl)),
+          );
+        }
+      });
+    });
+  }
 
   Future<void> getPlaquesLatest(String id) async {
     final response = await NetworkCalls().getPlaque(id);
@@ -242,35 +242,34 @@ class _HomePageState extends State<HomePage> {
                 ? Center(child: Text(error))
                 : !hasId
                     ? getCodeWidget()
-                    :
-                    //  IndexedStack(
-                    //     index: currentIndex,
-                    //     children: [
-                    // isWebViewLoading && currentIndex == 0
-                    //     ? const SizedBox() // keep hidden while preloading
-                    //     : InAppWebView(
-                    //         onLoadStop: (controller, url) {
-                    //           setState(() {
-                    //             isWebViewLoading = false;
+                    : IndexedStack(
+                        index: currentIndex,
+                        children: [
+                          isWebViewLoading && currentIndex == 0
+                              ? const SizedBox() // keep hidden while preloading
+                              : InAppWebView(
+                                  onLoadStop: (controller, url) {
+                                    setState(() {
+                                      isWebViewLoading = false;
 
-                    //             if (switchToWebViewAfterLoad) {
-                    //               currentIndex =
-                    //                   0; // Show WebView only after preload
-                    //               switchToWebViewAfterLoad = false;
-                    //             }
-                    //           });
-                    //         },
-                    //         initialUrlRequest:
-                    //             URLRequest(url: WebUri(currentUrl)),
-                    //         onWebViewCreated: (controller) =>
-                    //             webViewController = controller,
-                    //       ),
-                    PlaquePage(
-                        plaqueList: plaqueList,
-                        hebrewDateFormatter: hebrewDateFormatter,
+                                      if (switchToWebViewAfterLoad) {
+                                        currentIndex =
+                                            0; // Show WebView only after preload
+                                        switchToWebViewAfterLoad = false;
+                                      }
+                                    });
+                                  },
+                                  initialUrlRequest:
+                                      URLRequest(url: WebUri(currentUrl)),
+                                  onWebViewCreated: (controller) =>
+                                      webViewController = controller,
+                                ),
+                          PlaquePage(
+                            plaqueList: plaqueList,
+                            hebrewDateFormatter: hebrewDateFormatter,
+                          ),
+                        ],
                       ),
-        // ],
-        // ),
       ),
     );
   }
